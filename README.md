@@ -1,6 +1,5 @@
 #include "studentdlg.h"
 #include "ui_studentdlg.h"
-
 #include <QApplication>
 #include <QTableView>
 #include <QSqlDatabase>
@@ -10,6 +9,9 @@
 #include <QAbstractItemView>
 #include <QStyledItemDelegate>
 #include <QTextOption>
+#include<QString>
+
+
 StudentDlg::StudentDlg(QWidget *parent)
     : QDialog(parent)
     , ui(new Ui::StudentDlg)
@@ -20,18 +22,17 @@ StudentDlg::StudentDlg(QWidget *parent)
     CreateDatabaseFunc();
 
     // 调用函数创建数据表
-     CreateTableFunc();
+    CreateTableFunc();
 
 
-     //加载数据到tableView_zhaosheng控件上
-     LoadDataToTableView();
+    //加载数据到tableView_zhaosheng控件上
+    LoadDataToTableView();
 
 }
 StudentDlg::~StudentDlg()
 {
     delete ui;
 }
-
 void StudentDlg::CreateDatabaseFunc()  // 创建SQLite数据库
 {
     // 1：添加数据库驱动
@@ -53,7 +54,7 @@ void StudentDlg::CreateDatabaseFunc()  // 创建SQLite数据库
 
 
 void StudentDlg::CreateTableFunc()
- {
+{
     QSqlQuery createquery;
     //创建sql语句
     QString strsql=QString("create table student("
@@ -61,7 +62,7 @@ void StudentDlg::CreateTableFunc()
                              "baomingqingkuang varchar(50) not null,"
 
                              "score decimal(10,2) not null,"
-                            "jiaofeiqingkuang varchar(50)  not null,"
+                             "jiaofeiqingkuang varchar(50)  not null,"
                              "phone varchar(20)  not null,"
                              "beizhu char(10)  )");
 
@@ -75,12 +76,12 @@ void StudentDlg::CreateTableFunc()
         QMessageBox::information(0,"成功","恭喜你，数据表创建成功！",QMessageBox::Ok);
     }
 
- }//创建SQLite数据表
+}//创建SQLite数据表
 
 
- //加载数据到tableView函数
- void StudentDlg::LoadDataToTableView()
- {
+//加载数据到tableView函数
+void StudentDlg::LoadDataToTableView()
+{
     // 创建自定义的查询模型
     QSqlQueryModel *model = new QSqlQueryModel(this);
     model->setQuery("SELECT * FROM student");
@@ -95,12 +96,12 @@ void StudentDlg::CreateTableFunc()
     // 隐藏水平表头
     ui->tableView_zhaosheng->horizontalHeader()->hide();
 
- }
+}
 
 
- void StudentDlg::QueryTableFunc()
-    {
-    }//执行查询操作
+void StudentDlg::QueryTableFunc()
+{
+}//执行查询操作
 void StudentDlg::on_pushButtonSort_clicked()
 {
 
@@ -154,42 +155,84 @@ void StudentDlg::on_pushButton_INSERT_clicked()
     {
         QMessageBox::critical(this,"失败","  提示：请填写学生有效联系方式  ",QMessageBox::Ok);
         return ;
-     }
+    }
 
-//备注
-     QString beizhu =ui->lineEdit_BEIZHU->text();
-
-
-//插入
-     QString strs = QString("INSERT INTO student VALUES ('%1', '%2', %3, '%4', '%5', '%6')")
-                        .arg(name).arg(baomingqingkuang).arg(score).arg(jiaofeiqingkuang)
-                        .arg(phone).arg(beizhu);
-
-     //实时刷新数据显示
-     LoadDataToTableView();
+    //备注
+    QString beizhu =ui->lineEdit_BEIZHU->text();
 
 
-     if (sqlquery.exec(strs) == false) {
-        QMessageBox::critical(0, "失败", "数据插入失败，请重新检查！", QMessageBox::Ok);
+    //插入
+    QString strs = QString("INSERT INTO student VALUES ('%1', '%2', %3, '%4', '%5', '%6')")
+                       .arg(name).arg(baomingqingkuang).arg(score).arg(jiaofeiqingkuang)
+                       .arg(phone).arg(beizhu);
+
+    //实时刷新数据显示
+    LoadDataToTableView();
+
+
+    if (sqlquery.exec(strs) == false) {
+        QMessageBox::critical(0, "失败", "数据录入失败，请重新检查！", QMessageBox::Ok);
         //实时刷新数据显示
         LoadDataToTableView();
-     } else {
-        QMessageBox::information(0, "成功", "恭喜你，数据插入成功！", QMessageBox::Ok);
+    } else {
+        QMessageBox::information(0, "成功", "恭喜你，学生数据录入成功！", QMessageBox::Ok);
         //实时刷新数据显示
         LoadDataToTableView();
-     }
+    }
 }
 
 void StudentDlg::on_pushButton_DELETE_clicked()
 {
+    // 获取当前选中的行
+    QModelIndexList selectedRows = ui->tableView_zhaosheng->selectionModel()->selectedRows();
+    int count = selectedRows.size();
+    if (count == 0)
+    {
+        QMessageBox::critical(this, "失败", "请选择要删除的学生信息（一行或多行）", QMessageBox::Ok);
+        return;
+    }
 
+    // 提示用户是否确认删除
+    QMessageBox::StandardButton reply = QMessageBox::question(this, "确认删除", QString("确定要删除选中的 %1 条学生信息吗？").arg(count),
+                                                              QMessageBox::Yes | QMessageBox::No);
+    if (reply != QMessageBox::Yes)
+    {
+        return;
+    }
+
+    // 执行删除操作
+    QSqlQuery sqlQuery;
+    bool success = true;
+
+    foreach (const QModelIndex& index, selectedRows)
+    {
+        QString name = ui->tableView_zhaosheng->model()->index(index.row(), 0).data().toString();
+        QString queryStr = QString("DELETE FROM student WHERE name = '%1'").arg(name);
+
+        if (!sqlQuery.exec(queryStr))
+        {
+            success = false;
+            qDebug() << "删除学生信息失败：" << sqlQuery.lastError().text();
+        }
+    }
+
+    if (success)
+    {
+        QMessageBox::information(this, "成功", QString("成功删除 %1 条学生信息！").arg(count), QMessageBox::Ok);
+    }
+    else
+    {
+        QMessageBox::critical(this, "失败", "删除学生信息失败，请重试！", QMessageBox::Ok);
+    }
+
+    // 实时刷新数据显示
+    LoadDataToTableView();
 }
-
+// 更改学生数据信息
 void StudentDlg::on_pushButton_UPDATE_clicked()
 {
 
 }
-
 void StudentDlg::on_pushButton_SEARCH_clicked()
 {
 
